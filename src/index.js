@@ -1,5 +1,6 @@
 const SpotifyWebApi = require("spotify-web-api-node");
 const express = require("express");
+const process = require("process");
 
 var scopes = [
     "user-read-private",
@@ -17,8 +18,8 @@ var scopes = [
     "user-read-playback-state",
   ],
   redirectUri = "http://localhost:5500/authenticate",
-  clientId = "f090eff2edba4b17a1b0743e4080e755",
-  clientSecret = "d137823d95f54913b48faed8ebef2a09",
+  clientId = process.env.CLIENT_ID,
+  clientSecret = process.env.CLIENT_SECRET,
   state = "Authorized";
 
 // Setting credentials can be done in the wrapper's constructor, or using the API object's setters.

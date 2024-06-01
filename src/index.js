@@ -19,8 +19,10 @@ var scopes = [
   ],
   state = "Authorized";
 
-console.log("CLIENT_ID: " + process.env.CLIENT_ID);
-console.log("CLIENT_SECRET: " + process.env.CLIENT_SECRET);
+if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REDIRECT_URI) {
+  console.error("Please set the CLIENT_ID, CLIENT_SECRET, and REDIRECT_URI environment variables.");
+  process.exit(1);
+}
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.CLIENT_ID,
@@ -31,7 +33,10 @@ const spotifyApi = new SpotifyWebApi({
 // Create the authorization URL
 var authorizeURL = spotifyApi.createAuthorizeURL(scopes, state, true);
 
-console.log("Auth URL: " + authorizeURL);
+if (!authorizeURL) {
+  console.error("Something went wrong when retrieving the authorization URL!");
+  process.exit(1);
+}
 
 require("child_process").exec(`start " " "${authorizeURL}"`);
 
@@ -92,37 +97,33 @@ app.get("/dashboard", (req, response) => {
 app.get("/playlists", (req, response) => {
   spotifyApi.getUserPlaylists(userData.me.id).then(
     function (data) {
-      // console.log("Retrieved playlists", data.body);
       userData.playlists = data.body;
-      let playlistResponse = "";
-      playlistResponse += `
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th><h4>Name:</h4></th>
-            <th><h4>Description:</h4></th>
-            <th><h4>Track Count:</h4></th>
-            <th><h4>View Playlist:</h4></th>
-          </tr>
-        </thead>
-        <tbody>`;
+      let playlistResponse = `
+      <div class="container mt-4">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">`;
       for (let i = 0; i < userData.playlists.items.length; i++) {
+        let playlist = userData.playlists.items[i];
         playlistResponse += `
-            <tr>
-              <td><h4>${userData.playlists.items[i].name}</h4></td>
-              <td><p>${userData.playlists.items[i].description}</p></td>
-              <td><p>${userData.playlists.items[i].tracks.total} tracks</p></td>
-              <td><button class="btn btn-info" hx-get="/playlist/${userData.playlists.items[i].id}" hx-trigger="click" hx-target="#playlistModal" data-bs-toggle="modal" data-bs-target="#playlistModal">View Playlist</button></td>
-            </tr>
-        `;
+          <div class="col col-md-4">
+            <div class="card h-100">
+              <img src="${playlist.images[0]?.url}" class="card-img-top" alt="${playlist.name}">
+              <div class="card-body">
+                <h5 class="card-title">${playlist.name}</h5>
+                <p class="card-text">${playlist.description}</p>
+                <p class="card-text"><small class="text-muted">${playlist.tracks.total} tracks</small></p>
+                <button class="btn btn-info" hx-get="/playlist/${playlist.id}" hx-trigger="click" hx-target="#playlistModal" data-bs-toggle="modal" data-bs-target="#playlistModal">View Playlist</button>
+              </div>
+            </div>
+          </div>`;
       }
-      playlistResponse += `</tbody>
-      </table>
-          <div id="playlistModal" class="modal modal-blur fade" style="display: none;" aria-hidden="false" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered" style="min-width: 60%;" role="dialog">
-            <div class="modal-content"></div>
+      playlistResponse += `
         </div>
-    </div>`;
+      </div>
+      <div id="playlistModal" class="modal modal-blur fade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+          <div class="modal-content"></div>
+        </div>
+      </div>`;
       response.send(playlistResponse);
     },
     function (err) {
@@ -134,52 +135,59 @@ app.get("/playlists", (req, response) => {
 app.get("/playlist/:id", (req, response) => {
   spotifyApi.getPlaylist(req.params.id).then(
     function (data) {
-      // console.log("Retrieved playlist", data.body);
       let playlist = data.body;
-      let playlistResponse = "";
-      playlistResponse += `
-      <div class="modal-dialog modal-xl modal-dialog-centered style="min-width: 100%;">
-      <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title">${playlist.name}</h5>
-      </div>
-      <div class="modal-body" style="max-height: calc(100vh - 210px);overflow-y: auto;">
-      <div class="table-responsive">
-      <table class="table table-borderless">
-        <thead>
-          <tr>
-            <th><h4>No:</h4></th>
-            <th><h4>Name:</h4></th>
-            <th><h4>Artist:</h4></th>
-            <th><h4>Album:</h4></th>
-            <th><h4>Release Date:</h4></th>
-            <th><h4>Duration:</h4></th>
-            <th><h4>Preview Playback:</h4></th>
-          </tr>
-        </thead>
-        <tbody>`;
+
+      let playlistResponse = `
+      <div class="modal-dialog modal-xl modal-dialog-centered" style="min-width: 100%;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">${playlist.name}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" style="max-height: calc(100vh - 210px); overflow-y: auto;">
+            <div class="container">
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <img src="${playlist.images[0]?.url}" class="img-fluid rounded-start" alt="${playlist.name}">
+                </div>
+                <div class="col-md-8">
+                  <h5>${playlist.name}</h5>
+                  <p>${playlist.description}</p>
+                  <p><strong>Created by:</strong> ${playlist.owner.display_name}</p>
+                  <p><strong>Total Tracks:</strong> ${playlist.tracks.total}</p>
+                </div>
+              </div>
+            </div>
+            <div class="container-fluid">
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">`;
+
       playlist.tracks.items.forEach((track, index) => {
         playlistResponse += `
-        <tr>
-          <td><p>${index + 1}.</p></td>
-          <td><p>${track.track.name}</p></td>
-          <td><p>${track.track.artists[0].name}</p></td>
-          <td><p>${track.track.album.name}</p></td>
-          <td><p>${track.track.album.release_date}</p></td>
-          <td><p>${formatMilliseconds(track.track.duration_ms)}</p></td>
-          <td><audio src="${track.track.preview_url}" controls crossorigin=”anonymous”></audio></td>
-        <tr>
-        `;
+                <div class="col">
+                  <div class="card h-100">
+                    <img src="${track.track.album.images[0]?.url}" class="card-img-top" alt="${track.track.album.name}">
+                    <div class="card-body">
+                      <h5 class="card-title">${index + 1}. ${track.track.name}</h5>
+                      <p class="card-text"><strong>Artist:</strong> ${track.track.artists[0].name}</p>
+                      <p class="card-text"><strong>Album:</strong> ${track.track.album.name}</p>
+                      <p class="card-text"><strong>Release Date:</strong> ${track.track.album.release_date}</p>
+                      <p class="card-text"><strong>Duration:</strong> ${formatMilliseconds(track.track.duration_ms)}</p>
+                      <audio src="${track.track.preview_url}" controls crossorigin="anonymous" class="w-100 mt-2"></audio>
+                    </div>
+                  </div>
+                </div>`;
       });
-      playlistResponse += `</tbody>
-      </table>
-      </div>
-      </div>
-      <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-      </div>
+
+      playlistResponse += `
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
       </div>`;
+
       response.send(playlistResponse);
     },
     function (err) {
@@ -193,33 +201,34 @@ app.get("/top-artists", (req, response) => {
     function (data) {
       // console.log("Retrieved top artists", data.body);
       userData.topArtists = data.body;
-      let topArtistsResponse = "";
-      topArtistsResponse += `
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th><h4>Name:</h4></th>
-            <th><h4>Genres:</h4></th>
-            <th><h4>View Artist:</h4></th>
-          </tr>
-        </thead>
-        <tbody>`;
-      for (let i = 0; i < userData.topArtists.items.length; i++) {
+      let topArtistsResponse = `
+      <div class="container mt-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">`;
+
+      userData.topArtists.items.forEach((artist) => {
         topArtistsResponse += `
-            <tr>
-              <td><h4>${userData.topArtists.items[i].name}</h4></td>
-              <td><p>${userData.topArtists.items[i].genres}</p></td>
-              <td><button class="btn btn-info" hx-get="/artist/${userData.topArtists.items[i].id}" hx-trigger="click" hx-target="#artistModal" data-bs-toggle="modal" data-bs-target="#artistModal">View Artist</button></td>
-            </tr>
-        `;
-      }
-      topArtistsResponse += `</tbody>
-      </table>
-          <div id="artistModal" class="modal modal-blur fade" style="display: none;" aria-hidden="false" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered" style="min-width: 60%;" role="dialog">
-            <div class="modal-content"></div>
+          <div class="col">
+            <div class="card h-100">
+              <img src="${artist.images[0]?.url}" class="card-img-top" alt="${artist.name}">
+              <div class="card-body">
+                <h5 class="card-title">${artist.name}</h5>
+                <p class="card-text"><strong>Genres:</strong> ${artist.genres.join(", ")}</p>
+                <p class="card-text"><strong>Popularity:</strong> ${artist.popularity}</p>
+                <button class="btn btn-info w-100" hx-get="/artist/${artist.id}" hx-trigger="click" hx-target="#artistModal" data-bs-toggle="modal" data-bs-target="#artistModal">View Artist</button>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      topArtistsResponse += `
         </div>
-    </div>`;
+      </div>
+      <div id="artistModal" class="modal modal-blur fade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+          <div class="modal-content"></div>
+        </div>
+      </div>`;
+
       response.send(topArtistsResponse);
     },
     function (err) {
@@ -231,29 +240,31 @@ app.get("/top-artists", (req, response) => {
 app.get("/artist/:id", (req, response) => {
   spotifyApi.getArtist(req.params.id).then(
     function (data) {
-      // console.log("Retrieved artist", data.body);
       let artist = data.body;
-      let artistResponse = `
-      <div class="modal-dialog modal-lg modal-dialog-centered style="min-width: 60%;">
-      <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title">${artist.name}</h5>
-      </div>
-      <div class="modal-body" style="max-height: calc(100vh - 210px);overflow-y: auto;">
-      <div class="card">
-      <img id="artistImage" src="${artist.images[1].url}" class="card-img-top" alt="Artist Image"/>
-      <div class="card-body">
-      <h5 class="card-title">Genres:</h5>
-      <p class="card-text">${artist.genres}</p>
-      <br>
-      <h5 class="card-title">Popularity:</h5>
-      <p class="card-text">${artist.popularity}</p>
-      </div>
-      </div>
-      <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-      </div>
+      let artistResponse = ` <div class="modal-dialog modal-lg modal-dialog-centered" style="min-width: 60%;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">${artist.name}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" style="max-height: calc(100vh - 210px); overflow-y: auto;">
+            <div class="card">
+              <img src="${artist.images[0]?.url}" class="card-img-top" alt="${artist.name}" />
+              <div class="card-body">
+                <h5 class="card-title">Genres:</h5>
+                <p class="card-text">${artist.genres.join(", ")}</p>
+                <h5 class="card-title">Popularity:</h5>
+                <p class="card-text">${artist.popularity}</p>
+                <h5 class="card-title">Followers:</h5>
+                <p class="card-text">${artist.followers.total.toLocaleString()}</p>
+                <a href="${artist.external_urls.spotify}" class="btn btn-primary" target="_blank">View on Spotify</a>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
       </div>`;
       response.send(artistResponse);
     },
@@ -378,51 +389,35 @@ app.post("/get-recommendations", (req, response) => {
     let trackURIS = [];
     let recResponse = `
     <h3>Recommended Playlist:</h3>
-    <table class="table table-borderless">
-        <thead>
-          <tr>
-            <th><h4>No:</h4></th>
-            <th><h4>Name:</h4></th>
-            <th><h4>Artist:</h4></th>
-            <th><h4>Album:</h4></th>
-            <th><h4>Release Date:</h4></th>
-            <th><h4>Duration:</h4></th>
-            <th><h4>Preview Playback:</h4></th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+    <div class="container">
+      <div class="list-group">`;
 
     tracks.forEach((track, index) => {
       trackURIS.push(track.uri);
-      let artists = "";
-      if (track.artists.length > 1) {
-        track.artists.forEach((artist) => {
-          artists += artist.name + ", ";
-        });
-      } else {
-        artists = track.artists[0].name;
-      }
+      let artists = track.artists.map((artist) => artist.name).join(", ");
       recResponse += `
-      <tr>
-        <td><p>${index + 1}.</p></td>
-        <td><p>${track.name}</p></td>
-        <td><p>${artists}</p></td>
-        <td><p>${track.album.name}</p></td>
-        <td><p>${track.album.release_date}</p></td>
-        <td><p>${formatMilliseconds(track.duration_ms)}</p></td>
-        <td><audio src="${track.preview_url}" controls crossorigin=”anonymous”></audio></td>
-      <tr>
-      `;
+      <div class="list-group-item list-group-item-action d-flex gap-3 py-3" aria-current="true">
+        <img src="${track.album.images[0]?.url}" alt="${track.album.name}" class="rounded" style="width: 100px; height: 100px; object-fit: cover;">
+        <div class="d-flex gap-2 w-100 justify-content-between">
+          <div>
+            <h5 class="mb-0">${index + 1}. ${track.name}</h5>
+            <p class="mb-1"><strong>Artist:</strong> ${artists}</p>
+            <p class="mb-1"><strong>Album:</strong> ${track.album.name}</p>
+            <p class="mb-1"><strong>Release Date:</strong> ${track.album.release_date}</p>
+            <p class="mb-1"><strong>Duration:</strong> ${formatMilliseconds(track.duration_ms)}</p>
+          </div>
+          <audio src="${track.preview_url}" controls class="align-self-center"></audio>
+        </div>
+      </div>`;
     });
 
     recResponse += `
-    </tbody>
-    </table>
+      </div>
+    </div>
     <hr>
     <h4>Save Playlist:</h4>
     <form hx-post="/create-playlist" hx-target="#recModal">
-    <div class="mb-3" style="max-height: 300px; padding: 15px; border: 3px gray solid; border-radius: 15px 15px 15px 15px; overflow-y: auto;">
+    <div class="mb-3" style="max-height: 300px; padding: 15px; border: 3px gray solid; border-radius: 15px; overflow-y: auto;">
       <label for="playlistName" class="form-label">
       Playlist Name:
       <input type="text" class="form-control" id="playlistName" name="playlistName">
@@ -514,7 +509,7 @@ app.post("/create-playlist", (req, response) => {
 });
 
 app.listen(5500, () => {
-  console.log("Listening on port 5500");
+  console.log("App started, listening on port 5500.");
 });
 
 function formatMilliseconds(milliseconds) {

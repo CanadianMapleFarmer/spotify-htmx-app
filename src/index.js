@@ -1,6 +1,6 @@
 const SpotifyWebApi = require("spotify-web-api-node");
 const express = require("express");
-const process = require("process");
+require("dotenv").config();
 
 var scopes = [
     "user-read-private",
@@ -17,27 +17,40 @@ var scopes = [
     "user-follow-modify",
     "user-read-playback-state",
   ],
-  redirectUri = "http://localhost:5500/authenticate",
-  clientId = process.env.CLIENT_ID,
-  clientSecret = process.env.CLIENT_SECRET,
   state = "Authorized";
 
-// Setting credentials can be done in the wrapper's constructor, or using the API object's setters.
-var spotifyApi = new SpotifyWebApi({
-  redirectUri: redirectUri,
-  clientId: clientId,
-  clientSecret: clientSecret,
+console.log("CLIENT_ID: " + process.env.CLIENT_ID);
+console.log("CLIENT_SECRET: " + process.env.CLIENT_SECRET);
+
+const spotifyApi = new SpotifyWebApi({
+  clientId: process.env.CLIENT_ID,
+  clientSecret: process.env.CLIENT_SECRET,
+  redirectUri: "http://localhost:5500/authenticate",
 });
 
+// Retrieve an access token
+// spotifyApi.clientCredentialsGrant().then(
+//   function (data) {
+//     console.log("The access token expires in " + data.body["expires_in"]);
+//     console.log("The access token is " + data.body["access_token"]);
+
+//     // Save the access token so that it's used in future calls
+//     spotifyApi.setAccessToken(data.body["access_token"]);
+//     spotifyApi.setRefreshToken(data.body["refresh_token"]);
+//   },
+//   function (err) {
+//     console.log("Something went wrong when retrieving an access token", err.message);
+//   }
+// );
+
 // Create the authorization URL
-var authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+var authorizeURL = spotifyApi.createAuthorizeURL(scopes, state, true);
 
 console.log("Auth URL: " + authorizeURL);
 
 require("child_process").exec(`start " " "${authorizeURL}"`);
 
 const app = express();
-// express.urlencoded()
 
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
@@ -143,7 +156,7 @@ app.get("/playlist/:id", (req, response) => {
       let playlist = data.body;
       let playlistResponse = "";
       playlistResponse += `
-      <div class="modal-dialog modal-lg modal-dialog-centered style="min-width: 60%;">
+      <div class="modal-dialog modal-xl modal-dialog-centered style="min-width: 100%;">
       <div class="modal-content">
       <div class="modal-header">
       <h5 class="modal-title">${playlist.name}</h5>
@@ -153,25 +166,29 @@ app.get("/playlist/:id", (req, response) => {
       <table class="table table-borderless">
         <thead>
           <tr>
+            <th><h4>No:</h4></th>
             <th><h4>Name:</h4></th>
             <th><h4>Artist:</h4></th>
             <th><h4>Album:</h4></th>
             <th><h4>Release Date:</h4></th>
             <th><h4>Duration:</h4></th>
+            <th><h4>Preview Playback:</h4></th>
           </tr>
         </thead>
         <tbody>`;
-      for (let i = 0; i < playlist.tracks.total; i++) {
+      playlist.tracks.items.forEach((track, index) => {
         playlistResponse += `
         <tr>
-          <td><p>${playlist.tracks.items[i].track.name}</p></td>
-          <td><p>${playlist.tracks.items[i].track.artists[0].name}</p></td>
-          <td><p>${playlist.tracks.items[i].track.album.name}</p></td>
-          <td><p>${playlist.tracks.items[i].track.album.release_date}</p></td>
-          <td><p>${formatMilliseconds(playlist.tracks.items[i].track.duration_ms)}</p></td>
+          <td><p>${index + 1}.</p></td>
+          <td><p>${track.track.name}</p></td>
+          <td><p>${track.track.artists[0].name}</p></td>
+          <td><p>${track.track.album.name}</p></td>
+          <td><p>${track.track.album.release_date}</p></td>
+          <td><p>${formatMilliseconds(track.track.duration_ms)}</p></td>
+          <td><audio src="${track.track.preview_url}" controls crossorigin=”anonymous”></audio></td>
         <tr>
         `;
-      }
+      });
       playlistResponse += `</tbody>
       </table>
       </div>
@@ -210,7 +227,7 @@ app.get("/top-artists", (req, response) => {
             <tr>
               <td><h4>${userData.topArtists.items[i].name}</h4></td>
               <td><p>${userData.topArtists.items[i].genres}</p></td>
-              <td><button class="btn btn-info" hx-get="/artist/${userData.topArtists.items[i].id}" hx-trigger="click" hx-target="#artistModal">View Artist</button></td>
+              <td><button class="btn btn-info" hx-get="/artist/${userData.topArtists.items[i].id}" hx-trigger="click" hx-target="#artistModal" data-bs-toggle="modal" data-bs-target="#artistModal">View Artist</button></td>
             </tr>
         `;
       }
@@ -232,7 +249,7 @@ app.get("/top-artists", (req, response) => {
 app.get("/artist/:id", (req, response) => {
   spotifyApi.getArtist(req.params.id).then(
     function (data) {
-      console.log("Retrieved artist", data.body);
+      // console.log("Retrieved artist", data.body);
       let artist = data.body;
       let artistResponse = `
       <div class="modal-dialog modal-lg modal-dialog-centered style="min-width: 60%;">
@@ -265,7 +282,7 @@ app.get("/artist/:id", (req, response) => {
 });
 
 app.get("/recommendations", (req, response) => {
-  spotifyApi.getMyTopArtists({ limit: 150 }).then((res, err) => {
+  spotifyApi.getMyTopArtists({ limit: 50 }).then((res, err) => {
     if (err) {
       console.log("Something went wrong when retrieving the access token!", err);
     }
@@ -284,7 +301,7 @@ app.get("/recommendations", (req, response) => {
     // Iterate through artists and add them as options
     artists.forEach((artist) => {
       recResponse += `
-      <label class="form-check-label" for="${artist.id}">
+      <label class="form-check-label" for="${artist.id}" style="font-size: 18px">
       <span class="badge bg-secondary">
       <input class="form-check-input" type="checkbox" value="${artist.id}" id="${artist.id}" name="artists">
       ${artist.name}
@@ -308,7 +325,7 @@ app.get("/recommendations", (req, response) => {
       // Iterate through genres and add them as options
       genres.forEach((genre) => {
         recResponse += `
-      <label class="form-check-label" for="${genre}">
+      <label class="form-check-label" for="${genre}" style="font-size: 18px">
       <span class="badge bg-secondary">
       <input class="form-check-input" type="checkbox" value="${genre}" id="${genre}" name="genres">
       ${genre.charAt(0).toUpperCase() + genre.slice(1)}
@@ -435,7 +452,7 @@ app.post("/get-recommendations", (req, response) => {
       </label>
       </br>
       <label for="playlistPublic" class="form-label">
-      Public Playlist:
+      Public Playlist(?):
       <input type="checkbox" class="form-check-input" id="playlistPublic" name="playlistPublic">
       </label>
       </br>

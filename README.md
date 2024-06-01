@@ -15,14 +15,20 @@ To get started with this app, follow these simple steps:
 
 - **Clone the repository**:
 ```bash
-  git clone https://github.com/yourusername/spotify-explorer.git
-  cd spotify-explorer
+  git clone https://github.com/CanadianMapleFarmer/spotify-htmx-app.git
+  cd spotify-htmx-app
 ```
 - **Install dependencies**:
 ```bash
- npm install
+  npm install
 ```
+- **Run the project**:
+```bash
+  node .
+```
+
 ### Set Up Environment Variables
+
 - **environment variables**:
   Create a `.env` file in the root directory and add your Spotify API credentials:
   ```plaintext

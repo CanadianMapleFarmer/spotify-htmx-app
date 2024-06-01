@@ -14,15 +14,20 @@ Welcome to **Spotify HTMX App**! Dive into a dynamic experience with this Node E
 To get started with this app, follow these simple steps:
 
 - **Clone the repository**:
+
 ```bash
   git clone https://github.com/CanadianMapleFarmer/spotify-htmx-app.git
   cd spotify-htmx-app
 ```
+
 - **Install dependencies**:
+  
 ```bash
   npm install
 ```
+
 - **Run the project**:
+  
 ```bash
   node .
 ```

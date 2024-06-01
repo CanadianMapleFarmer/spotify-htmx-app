@@ -28,5 +28,5 @@ To get started with this app, follow these simple steps:
   ```plaintext
   SPOTIFY_CLIENT_ID=your_spotify_client_id
   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-  SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
+  SPOTIFY_REDIRECT_URI=http://localhost:5500/authenticate
   ```

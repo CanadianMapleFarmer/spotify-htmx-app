@@ -70,27 +70,26 @@ app.get("/authenticate", (req, response) => {
 
 app.get("/dashboard", (req, response) => {
   response.send(`
-  <h1>Spotify API</h1>
-  <p>Successfully authorized</p>
-  </hr>
-  <div id="userProfile">
+    <h1>Spotify API</h1>
+    <p>Successfully authorized</p>
+    <hr />
+    <div id="userProfile">
       <h2 id="displayName"><strong>Display Name:</strong> ${userData.me.display_name}</h2>
       <a id="spotifyLink" href="${userData.me.external_urls.spotify}"><strong>Profile Link:</strong> Spotify Profile</a>
-      </br>
-      <img id="profileImage" src="${userData.me.images[1].url}" alt="Profile Image" height="64" width="64"/>
+      <br />
+      <img id="profileImage" src="${userData.me.images[1].url}" alt="Profile Image" height="64" width="64" />
       <p id="userType"><strong>Type:</strong> ${userData.me.type}</p>
       <p id="followers"><strong>Follower Count:</strong> ${userData.me.followers.total}</p>
       <p id="country"><strong>Country Code:</strong> ${userData.me.country}</p>
       <p id="product"><strong>Account Subscription:</strong> ${userData.me.product}</p>
       <p id="email"><strong>Email: </strong> ${userData.me.email}</p>
-      </hr>
+      <hr />
       <button class="btn btn-primary" hx-get="/playlists" hx-trigger="click" hx-target="#panel" hx-swap="innerHTML">View My Playlists</button>
-      </br>
-      </br>
+      <br />
+      <br />
       <button class="btn btn-primary" hx-get="/top-artists" hx-trigger="click" hx-target="#panel" hx-swap="innerHTML">View My Top Artists</button>
     </div>
-    <div id="panel">
-    </div>
+    <div id="panel"></div>
   `);
 });
 
@@ -334,12 +333,12 @@ app.get("/recommendations", (req, response) => {
       Track limit:
       <input type="number" class="form-control" id="limit" name="limit" min="1" max="100" value="20">
       </label>
-      </br>
-      </br>
+      <br />
+      <br />
       <button type="submit" class="btn btn-primary">Generate Tracks</button>
       </form>
-      </br>
-      </br>
+      <br />
+      <br />
       <div id="result">
       </div>
       `;
@@ -358,17 +357,17 @@ app.post("/get-recommendations", (req, response) => {
     return;
   }
 
-  if (artistsLength + genresLength > 5) {
-    response.send(`<h3 style="color: red">Please select 5 or less artists and/or genres.</h3>`);
-    return;
-  }
-
   // Check if artists and genres are defined and have a length property
   if (Array.isArray(req.body.artists)) {
     artistsLength = req.body.artists.length;
   }
   if (Array.isArray(req.body.genres)) {
     genresLength = req.body.genres.length;
+  }
+
+  if (artistsLength + genresLength > 5) {
+    response.send(`<h3 style="color: red">Please select 5 or less artists and/or genres.</h3>`);
+    return;
   }
 
   // Sum the lengths and check if the total is greater than 5
@@ -422,22 +421,22 @@ app.post("/get-recommendations", (req, response) => {
       Playlist Name:
       <input type="text" class="form-control" id="playlistName" name="playlistName">
       </label>
-      </br>
+      <br />
       <label for="playlistDescription" class="form-label">
       Playlist Description(?):
       <input type="text" class="form-control" id="playlistDescription" name="playlistDescription">
       </label>
-      </br>
+      <br />
       <label for="playlistPublic" class="form-label">
       Public Playlist(?):
       <input type="checkbox" class="form-check-input" id="playlistPublic" name="playlistPublic">
       </label>
-      </br>
+      <br />
       <label for="playlistCollaborative" class="form-label">
       Collaborative Playlist(?):
       <input type="checkbox" class="form-check-input" id="playlistCollaborative" name="playlistCollaborative">
       </label>
-      </br>
+      <br />
       <input type="hidden" name="tracks" value="${encodeURIComponent(JSON.stringify(trackURIS))}">
       <input type="hidden" name="userId" value="${userData.me.id}">
       <button type="submit" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#recModal">Save Playlist</button>

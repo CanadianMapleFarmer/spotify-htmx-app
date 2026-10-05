@@ -38,7 +38,7 @@ if (!authorizeURL) {
   process.exit(1);
 }
 
-require("child_process").exec(`start " " "${authorizeURL}"`);
+require("child_process").exec(`open "${authorizeURL}"`);
 
 const app = express();
 
@@ -136,7 +136,34 @@ app.get("/playlist/:id", (req, response) => {
     function (data) {
       let playlist = data.body;
 
-      let playlistResponse = `
+      let narrowedTracks = playlist.tracks.items.map((item) => ({
+        name: item.track.name,
+        artists: item.track.artists.map((a) => a.name).join(", "),
+        artist_ids: item.track.artists.map((a) => a.id),
+        album: item.track.album.name,
+        release_date: item.track.album.release_date,
+        duration_ms: item.track.duration_ms,
+      }));
+
+      let uniqueArtistIds = new Set();
+      narrowedTracks.forEach((track) => {
+        track.artist_ids.forEach((id) => uniqueArtistIds.add(id));
+      });
+
+      spotifyApi.getArtists(Array.from(uniqueArtistIds)).then((artistData) => {
+        const artistGenreMap = {};
+        artistData.body.artists.forEach((artist) => {
+          artistGenreMap[artist.id] = artist.genres;
+        });
+        narrowedTracks.forEach((track) => {
+          track.genres = track.artist_ids.map((id) => artistGenreMap[id] || []).flat();
+        });
+
+        let payload = {
+          tracks: narrowedTracks,
+        };
+
+        let playlistResponse = `
       <div class="modal-dialog modal-xl modal-dialog-centered" style="min-width: 100%;">
         <div class="modal-content">
           <div class="modal-header">
@@ -160,8 +187,8 @@ app.get("/playlist/:id", (req, response) => {
             <div class="container-fluid">
               <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">`;
 
-      playlist.tracks.items.forEach((track, index) => {
-        playlistResponse += `
+        playlist.tracks.items.forEach((track, index) => {
+          playlistResponse += `
                 <div class="col">
                   <div class="card h-100">
                     <img src="${track.track.album.images[0]?.url}" class="card-img-top" alt="${track.track.album.name}">
@@ -175,9 +202,9 @@ app.get("/playlist/:id", (req, response) => {
                     </div>
                   </div>
                 </div>`;
-      });
+        });
 
-      playlistResponse += `
+        playlistResponse += `
               </div>
             </div>
           </div>
@@ -187,7 +214,8 @@ app.get("/playlist/:id", (req, response) => {
         </div>
       </div>`;
 
-      response.send(playlistResponse);
+        response.send(playlistResponse);
+      });
     },
     function (err) {
       console.log("Something went wrong!", err);
